@@ -21,16 +21,25 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Read version
+      - name: Read and validate version
         id: meta
-        run: echo "version=$(jq -r '.version' JellyfinDiscordAuth/meta.json)" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          VERSION="$(jq -er '.version | strings' JellyfinDiscordAuth/meta.json)"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid release version format in meta.json"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Skip if release already exists
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          if gh release view "v${{ steps.meta.outputs.version }}" --repo "${{ github.repository }}" &>/dev/null; then
+          if gh release view "v$VERSION" --repo "$REPOSITORY" &>/dev/null; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -71,39 +80,46 @@ jobs:
         id: create_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          gh release create "v${{ steps.meta.outputs.version }}" \
-            --title "v${{ steps.meta.outputs.version }}" \
-            --notes "$(jq -r '.changelog' JellyfinDiscordAuth/meta.json)" \
+          CHANGELOG="$(jq -er '.changelog | strings' JellyfinDiscordAuth/meta.json)"
+          gh release create "v$VERSION" \
+            --repo "$REPOSITORY" \
+            --title "v$VERSION" \
+            --notes "$CHANGELOG" \
             JellyfinDiscordAuth/artifacts/JellyfinDiscordAuth.zip
 
       - name: Update manifest.json
         if: steps.check.outputs.skip == 'false'
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          CHECKSUM: ${{ steps.checksum.outputs.md5 }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          CHECKSUM="${{ steps.checksum.outputs.md5 }}"
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          SOURCE_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/JellyfinDiscordAuth.zip"
-          CHANGELOG=$(jq -r '.changelog' JellyfinDiscordAuth/meta.json)
+          TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          SOURCE_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/JellyfinDiscordAuth.zip"
+          CHANGELOG="$(jq -er '.changelog | strings' JellyfinDiscordAuth/meta.json)"
 
-          NEW_VER=$(jq -n \
+          NEW_VER="$(jq -n \
             --arg changelog "$CHANGELOG" \
             --arg version "$VERSION" \
             --arg checksum "$CHECKSUM" \
             --arg timestamp "$TIMESTAMP" \
             --arg sourceUrl "$SOURCE_URL" \
-            '{changelog: $changelog, checksum: $checksum, sourceUrl: $sourceUrl, targetAbi: "12.0.0.0", timestamp: $timestamp, version: $version}')
+            '{changelog: $changelog, checksum: $checksum, sourceUrl: $sourceUrl, targetAbi: "12.0.0.0", timestamp: $timestamp, version: $version}')"
 
-          EXISTING=$(jq '.[0].versions' manifest.json)
-          ALL_VERSIONS=$(jq -n --argjson new "$NEW_VER" --argjson existing "$EXISTING" '[$new] + $existing')
-
+          EXISTING="$(jq '.[0].versions' manifest.json)"
+          ALL_VERSIONS="$(jq -n --argjson new "$NEW_VER" --argjson existing "$EXISTING" '[$new] + $existing')"
           jq --argjson versions "$ALL_VERSIONS" '.[0].versions = $versions' manifest.json > tmp.json && mv tmp.json manifest.json
 
       - name: Push manifest branch
         if: steps.check.outputs.skip == 'false'
         id: push_branch
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          BRANCH="ci/manifest-v${{ steps.meta.outputs.version }}"
+          BRANCH="ci/manifest-v$VERSION"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
@@ -112,22 +128,22 @@ jobs:
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git commit -m "chore: update manifest for v${{ steps.meta.outputs.version }}"
+          git commit -m "chore: update manifest for v$VERSION"
           git push origin "$BRANCH"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
       - name: Create and auto-merge manifest PR
         if: steps.check.outputs.skip == 'false' && steps.push_branch.outputs.pushed == 'true'
-        id: create_pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          BRANCH="ci/manifest-v${{ steps.meta.outputs.version }}"
+          BRANCH="ci/manifest-v$VERSION"
           gh pr create \
             --base main \
             --head "$BRANCH" \
-            --title "chore: update manifest for v${{ steps.meta.outputs.version }}" \
-            --body "Automated manifest update for release v${{ steps.meta.outputs.version }}."
+            --title "chore: update manifest for v$VERSION" \
+            --body "Automated manifest update for release v$VERSION."
           gh pr merge "$BRANCH" --squash --delete-branch 2>/dev/null || \
           gh pr merge "$BRANCH" --auto --squash --delete-branch
 
@@ -135,10 +151,12 @@ jobs:
         if: failure() && steps.push_branch.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: git push origin --delete "ci/manifest-v${{ steps.meta.outputs.version }}" || true
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: git push origin --delete "ci/manifest-v$VERSION" || true
 
       - name: Rollback - delete GitHub release and tag
         if: failure() && steps.create_release.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete "v${{ steps.meta.outputs.version }}" --yes --cleanup-tag
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: gh release delete "v$VERSION" --yes --cleanup-tag
