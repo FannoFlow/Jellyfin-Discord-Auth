@@ -8,6 +8,14 @@
     "owner": "FannoFlow",
     "versions": [
       {
+        "changelog": "Patch release following v1.2.0.",
+        "checksum": "C3CE729E8E42D4360593C165114DE537",
+        "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.1/JellyfinDiscordAuth.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-10-24T19:55:43Z",
+        "version": "1.2.1"
+      },
+      {
         "changelog": "Refactor Discord bot and OAuth2 flow into dedicated services.\r\nFix users being logged out immediately after Discord OAuth.\r\nFix invalid redirect_uri behind reverse proxy (Cloudflare, Traefik).\r\nFix XSS in error page.\r\nRestrict configuration endpoint to admins.\r\nAdd Discord login button on Jellyfin login page.",
         "checksum": "E450C168F18321A680E35DB3EED313A6",
         "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.1.0.2/JellyfinDiscordAuth.zip",
