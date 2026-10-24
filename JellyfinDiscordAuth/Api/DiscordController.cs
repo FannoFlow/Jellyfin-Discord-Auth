@@ -121,7 +121,7 @@ namespace JellyfinDiscordAuth.Api
             }
 
             // Redirect to the completion page with the temporary exchange code
-            return Redirect($"/DiscordAuth/Complete?code={Uri.EscapeDataString(result)}");
+            return Redirect($"/DiscordAuth/Complete#code={Uri.EscapeDataString(result)}");
         }
 
         /// <summary>
