@@ -44,6 +44,7 @@ namespace JellyfinDiscordAuth.Api
         /// Gets library and role data for the configuration page.
         /// </summary>
         [HttpGet("ConfigurationData")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public IActionResult GetConfigurationData()
         {
