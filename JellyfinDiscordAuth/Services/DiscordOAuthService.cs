@@ -345,7 +345,10 @@ namespace JellyfinDiscordAuth.Services
                 // Use a server-generated stable ID rather than a Discord-controlled username.
             var userDataRoot = Path.GetFullPath(_serverConfigurationManager.ApplicationPaths.UserConfigurationDirectoryPath);
             var userDataPath = Path.GetFullPath(Path.Combine(userDataRoot, user.Id.ToString("N")));
-            if (!userDataPath.StartsWith(userDataRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            var relativeUserPath = Path.GetRelativePath(userDataRoot, userDataPath);
+            if (Path.IsPathRooted(relativeUserPath)
+                || relativeUserPath == ".."
+                || relativeUserPath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Resolved avatar path is outside the user configuration directory.");
             }
