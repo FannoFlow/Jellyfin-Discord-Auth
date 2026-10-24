@@ -8,6 +8,14 @@
     "owner": "FannoFlow",
     "versions": [
       {
+        "changelog": "Fix missing Discord.Net.Dave runtime dependency in the release package.",
+        "checksum": "49AE26295C51649BB8B96B640EEE2ACC",
+        "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.2/JellyfinDiscordAuth.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-10-24T20:07:57Z",
+        "version": "1.2.2"
+      },
+      {
         "changelog": "Patch release following v1.2.0.",
         "checksum": "C3CE729E8E42D4360593C165114DE537",
         "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.1/JellyfinDiscordAuth.zip",
