@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      nuget-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      # Jellyfin SDK package versions must be reviewed against the target server ABI.
+      - dependency-name: "Jellyfin.Controller"
+      - dependency-name: "Jellyfin.Model"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
