@@ -1,13 +1,13 @@
 {
 	"category": "Authentication",
-	"changelog": "Harden Discord authentication and permission synchronization.\r\nAdd automated tests and GitHub Actions CI.",
+	"changelog": "Add Jellyfin 12.x compatibility using .NET 10 and Jellyfin 12.0 SDK assemblies.\r\nHarden Discord authentication and permission synchronization.\r\nAdd automated tests and GitHub Actions CI.",
 	"description": "This plugin allows users to sign in with Discord.",
 	"guid": "359a7d2a-1c54-4e70-abbb-01bc73f098cf",
 	"imageUrl": "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/main/img/logo.png",
 	"name": "Discord Authentication",
 	"overview": "Users can login with Discord",
-	"owner": "EvanTrow",
-	"targetAbi": "10.11.0",
-	"timestamp": "2026-10-24T19:12:24Z",
-	"version": "1.1.0.3"
+	"owner": "FannoFlow",
+	"targetAbi": "12.0.0.0",
+	"timestamp": "2026-10-24T19:13:43Z",
+	"version": "1.2.0"
 }
