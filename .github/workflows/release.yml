@@ -54,6 +54,7 @@ jobs:
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Core.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Rest.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.WebSocket.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Dave.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Commands.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Interactions.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Webhook.dll \
