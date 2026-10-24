@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -37,7 +38,7 @@ namespace JellyfinDiscordAuth.Services
         /// <returns>The temporary exchange code.</returns>
         public string CreateSession(string accessToken, Guid userId, string serverId, string username)
         {
-            var code = Guid.NewGuid().ToString("N");
+            var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
             var session = new DiscordAuthSession
             {
                 Code = code,
@@ -67,7 +68,7 @@ namespace JellyfinDiscordAuth.Services
 
             if (session.ExpiresAt < DateTimeOffset.UtcNow)
             {
-                _logger.LogWarning("Discord auth session {Code} has expired.", code);
+                _logger.LogWarning("A Discord auth session has expired.");
                 return null;
             }
 
