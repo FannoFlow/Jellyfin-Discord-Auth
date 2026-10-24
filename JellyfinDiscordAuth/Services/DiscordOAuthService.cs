@@ -171,6 +171,13 @@ namespace JellyfinDiscordAuth.Services
             string username = userData.Global_name ?? userData.Username;
             _logger.LogInformation("Discord user data received for {Username}.", username);
 
+            // A missing server ID must never disable membership authorization.
+            if (string.IsNullOrWhiteSpace(Config.ServerId))
+            {
+                _logger.LogError("Discord Server ID is not configured; refusing authentication.");
+                return (false, "Discord authentication is not configured.", true);
+            }
+
             // Validate server membership and roles
             SocketGuildUser? discordUser = null;
             if (!string.IsNullOrWhiteSpace(Config.ServerId.Trim()))
@@ -212,22 +219,28 @@ namespace JellyfinDiscordAuth.Services
                     return (false, "Something went wrong while fetching server users and roles. Please try again later.", true);
                 }
             }
-            else
+            // Resolve an existing account only through the saved immutable Discord ID mapping.
+            // Never claim an unrelated Jellyfin account based on a mutable display name.
+            var savedDiscordUser = Config.DiscordUserData?
+                .FirstOrDefault(x => string.Equals(x.Value.Id, userData.Id, StringComparison.Ordinal)) ?? default;
+            var isLinkedAccount = savedDiscordUser.Value != null;
+            User? user = isLinkedAccount
+                ? _userManager.GetUserById(savedDiscordUser.Key)
+                : null;
+
+            if (isLinkedAccount && user == null)
             {
-                _logger.LogWarning("Server ID is not set in the plugin configuration, skipping role check");
+                _logger.LogWarning("Discord identity {DiscordUserId} references a missing Jellyfin account.", userData.Id);
+                return (false, "Your linked Jellyfin account could not be found. Please contact an administrator.", true);
             }
 
-            // Match or create a Jellyfin user
-            var savedDiscordUser = Config.DiscordUserData?.FirstOrDefault(x => x.Value.Id == userData.Id) ?? default;
-            User? user = savedDiscordUser.Key.ToString() == "00000000-0000-0000-0000-000000000000"
-                ? _userManager.GetUserByName(username)
-                : _userManager.GetUserById(savedDiscordUser.Key) ?? _userManager.GetUserByName(username);
-
-            if (user == null)
+            if (!isLinkedAccount)
             {
                 try
                 {
-                    _logger.LogInformation("SSO user {Username} doesn't exist, creating...", username);
+                    // If this username already belongs to another Jellyfin user, creation must fail
+                    // rather than silently linking that account to this Discord identity.
+                    _logger.LogInformation("Creating a new Jellyfin account for Discord identity {DiscordUserId}.", userData.Id);
                     user = await _userManager.CreateUserAsync(username).ConfigureAwait(false);
                     user.AuthenticationProviderId = typeof(DiscordAuthenticationProvider).FullName!;
                     user.Password = _cryptoProvider.CreatePasswordHash(Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))).ToString();
@@ -237,26 +250,15 @@ namespace JellyfinDiscordAuth.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error creating user {Username}", username);
-                    return (false, "Something went wrong", true);
+                    _logger.LogError(ex, "Error creating Jellyfin user for Discord identity {DiscordUserId}", userData.Id);
+                    return (false, "Unable to create a Jellyfin account. If you already have an account, ask an administrator to link it.", true);
                 }
             }
             else
             {
-                try
-                {
-                    _logger.LogInformation("Discord user {Username} found in config, updating...", username);
-                    savedDiscordUser = new KeyValuePair<Guid, DiscordUser>(user.Id, userData);
-
-                    user = _userManager.GetUserById(savedDiscordUser.Key)!;
-                    user.Username = username;
-                    await _userManager.UpdateUserAsync(user).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating user {Username}", username);
-                    return (false, "Something went wrong", true);
-                }
+                // Keep the existing Jellyfin username; Discord display names are mutable and
+                // must not be allowed to rename or identify local accounts.
+                savedDiscordUser = new KeyValuePair<Guid, DiscordUser>(user!.Id, userData);
             }
 
             // Apply folder access from discord roles
@@ -324,21 +326,38 @@ namespace JellyfinDiscordAuth.Services
             }
 
             var contentType = contentTypeList.First();
-            if (!contentType.StartsWith("image", StringComparison.OrdinalIgnoreCase))
+            var extension = contentType.ToLowerInvariant() switch
             {
-                throw new InvalidOperationException("Content type of avatar URL is not an image, got: " + contentType);
-            }
+                "image/png" => ".png",
+                "image/jpeg" => ".jpg",
+                "image/webp" => ".webp",
+                "image/gif" => ".gif",
+                _ => throw new InvalidOperationException("Unsupported Discord avatar content type.")
+            };
 
-            var extension = contentType.Split("/").Last();
+            if (!avatarResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException("Discord avatar request failed with status " + (int)avatarResponse.StatusCode);
+            }
             var stream = await avatarResponse.Content.ReadAsStreamAsync().ConfigureAwait(false);
             await using (stream)
             {
-                var userDataPath = Path.Combine(_serverConfigurationManager.ApplicationPaths.UserConfigurationDirectoryPath, user.Username);
+                // Use a server-generated stable ID rather than a Discord-controlled username.
+            var userDataRoot = Path.GetFullPath(_serverConfigurationManager.ApplicationPaths.UserConfigurationDirectoryPath);
+            var userDataPath = Path.GetFullPath(Path.Combine(userDataRoot, user.Id.ToString("N")));
+            var relativeUserPath = Path.GetRelativePath(userDataRoot, userDataPath);
+            if (Path.IsPathRooted(relativeUserPath)
+                || relativeUserPath == ".."
+                || relativeUserPath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Resolved avatar path is outside the user configuration directory.");
+            }
                 if (user.ProfileImage is not null)
                 {
                     await _userManager.ClearProfileImageAsync(user).ConfigureAwait(false);
                 }
 
+                Directory.CreateDirectory(userDataPath);
                 user.ProfileImage = new ImageInfo(Path.Combine(userDataPath, "profile" + extension));
                 await _providerManager.SaveImage(stream, contentType, user.ProfileImage.Path)
                     .ConfigureAwait(false);

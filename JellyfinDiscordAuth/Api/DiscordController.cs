@@ -44,6 +44,7 @@ namespace JellyfinDiscordAuth.Api
         /// Gets library and role data for the configuration page.
         /// </summary>
         [HttpGet("ConfigurationData")]
+        [Authorize(Policy = "RequiresElevation")]
         [Produces(MediaTypeNames.Application.Json)]
         public IActionResult GetConfigurationData()
         {
@@ -109,6 +110,9 @@ namespace JellyfinDiscordAuth.Api
         [Produces(MediaTypeNames.Application.Json)]
         public async Task<IActionResult> Callback([FromQuery] string code, [FromQuery] string? state)
         {
+            Response.Headers["Cache-Control"] = "no-store";
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+
             var (success, result, isError) = await _oauthService.ProcessCallbackAsync(HttpContext, code, state).ConfigureAwait(false);
 
             if (!success)
@@ -145,6 +149,9 @@ namespace JellyfinDiscordAuth.Api
         [Produces(MediaTypeNames.Text.Html)]
         public IActionResult Complete()
         {
+            Response.Headers["Cache-Control"] = "no-store";
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+
             var assembly = Assembly.GetExecutingAssembly();
             var resourceName = "JellyfinDiscordAuth.Configuration.callbackPage.html";
             using var stream = assembly.GetManifestResourceStream(resourceName);
@@ -166,6 +173,9 @@ namespace JellyfinDiscordAuth.Api
         [Produces(MediaTypeNames.Application.Json)]
         public IActionResult Exchange([FromBody] ExchangeRequest request)
         {
+            Response.Headers["Cache-Control"] = "no-store";
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+
             if (string.IsNullOrWhiteSpace(request?.Code))
             {
                 return BadRequest(new { message = "Exchange code is required." });
