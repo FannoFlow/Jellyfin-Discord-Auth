@@ -99,7 +99,12 @@
 						html.push("<select is='emby-select' class='libraryRoleSelect'>");
 						roleOptions.forEach(function (option) {
 							if (selectedRoleId && option.indexOf("value='" + escapeHtml(selectedRoleId) + "'") > -1) {
-								html.push(option.replace('>', ' selected>'));
+								var optionTagEndIndex = option.indexOf('>');
+								if (optionTagEndIndex > -1) {
+									html.push(option.slice(0, optionTagEndIndex) + ' selected' + option.slice(optionTagEndIndex));
+								} else {
+									html.push(option);
+								}
 							} else {
 								html.push(option);
 							}
