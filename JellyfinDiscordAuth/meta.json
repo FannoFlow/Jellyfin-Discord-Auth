@@ -1,6 +1,6 @@
 {
 	"category": "Authentication",
-	"changelog": "Refactor Discord bot and OAuth2 flow into dedicated services.\r\nFix users being logged out immediately after Discord OAuth.\r\nFix invalid redirect_uri behind reverse proxy (Cloudflare, Traefik).\r\nFix XSS in error page.\r\nRestrict configuration endpoint to admins.\r\nAdd Discord login button on Jellyfin login page.",
+	"changelog": "Harden Discord authentication and permission synchronization.\r\nAdd automated tests and GitHub Actions CI.",
 	"description": "This plugin allows users to sign in with Discord.",
 	"guid": "359a7d2a-1c54-4e70-abbb-01bc73f098cf",
 	"imageUrl": "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/main/img/logo.png",
@@ -8,6 +8,6 @@
 	"overview": "Users can login with Discord",
 	"owner": "EvanTrow",
 	"targetAbi": "10.11.0",
-	"timestamp": "2026-06-14T18:15:35Z",
-	"version": "1.1.0.2"
+	"timestamp": "2026-10-24T19:12:24Z",
+	"version": "1.1.0.3"
 }
