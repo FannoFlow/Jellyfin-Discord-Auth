@@ -8,6 +8,14 @@
     "owner": "FannoFlow",
     "versions": [
       {
+        "changelog": "Security hardening for Discord authentication and release workflow.",
+        "checksum": "66A0FAD50577693BC47EA92FD531DE8C",
+        "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.3/JellyfinDiscordAuth.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-10-24T21:34:38Z",
+        "version": "1.2.3"
+      },
+      {
         "changelog": "Fix missing Discord.Net.Dave runtime dependency in the release package.",
         "checksum": "49AE26295C51649BB8B96B640EEE2ACC",
         "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.2/JellyfinDiscordAuth.zip",
