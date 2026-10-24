@@ -1,0 +1,51 @@
+name: Security and test CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "security/**"
+      - "ci/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Test and build (.NET 9)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+          cache: true
+          cache-dependency-path: |
+            JellyfinDiscordAuth/JellyfinDiscordAuth.csproj
+            tests/JellyfinDiscordAuth.Tests/JellyfinDiscordAuth.Tests.csproj
+
+      - name: Restore
+        run: dotnet restore JellyfinDiscordAuth.sln
+
+      - name: Run tests
+        run: dotnet test JellyfinDiscordAuth.sln --configuration Release --no-restore --logger "trx;LogFileName=test-results.trx"
+
+      - name: Build plugin
+        run: dotnet build JellyfinDiscordAuth/JellyfinDiscordAuth.csproj --configuration Release --no-restore
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/JellyfinDiscordAuth.Tests/TestResults/**/*.trx
+          if-no-files-found: ignore
