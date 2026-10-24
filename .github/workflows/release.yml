@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Read version
         id: meta
@@ -39,25 +39,25 @@ jobs:
       - name: Update timestamp in meta.json
         if: steps.check.outputs.skip == 'false'
         run: |
-          jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.timestamp = $ts' JellyfinDiscordAuth/meta.json > tmp.json && mv tmp.json JellyfinDiscordAuth/meta.json
+          jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.timestamp = $ts | .targetAbi = "12.0.0.0"' JellyfinDiscordAuth/meta.json > tmp.json && mv tmp.json JellyfinDiscordAuth/meta.json
 
       - name: Build
         if: steps.check.outputs.skip == 'false'
-        run: dotnet build JellyfinDiscordAuth/JellyfinDiscordAuth.csproj -c Release
+        run: dotnet build JellyfinDiscordAuth/JellyfinDiscordAuth.csproj --configuration Release
 
       - name: Package
         if: steps.check.outputs.skip == 'false'
         run: |
           mkdir -p JellyfinDiscordAuth/artifacts
           zip -j JellyfinDiscordAuth/artifacts/JellyfinDiscordAuth.zip \
-            JellyfinDiscordAuth/bin/Release/net9.0/JellyfinDiscordAuth.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/Discord.Net.Core.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/Discord.Net.Rest.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/Discord.Net.WebSocket.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/Discord.Net.Commands.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/Discord.Net.Interactions.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/Discord.Net.Webhook.dll \
-            JellyfinDiscordAuth/bin/Release/net9.0/meta.json
+            JellyfinDiscordAuth/bin/Release/net10.0/JellyfinDiscordAuth.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Core.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Rest.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.WebSocket.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Commands.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Interactions.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Webhook.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/meta.json
 
       - name: Compute MD5 checksum
         if: steps.check.outputs.skip == 'false'
@@ -91,7 +91,7 @@ jobs:
             --arg checksum "$CHECKSUM" \
             --arg timestamp "$TIMESTAMP" \
             --arg sourceUrl "$SOURCE_URL" \
-            '{changelog: $changelog, checksum: $checksum, sourceUrl: $sourceUrl, targetAbi: "10.11.0.0", timestamp: $timestamp, version: $version}')
+            '{changelog: $changelog, checksum: $checksum, sourceUrl: $sourceUrl, targetAbi: "12.0.0.0", timestamp: $timestamp, version: $version}')
 
           EXISTING=$(jq --arg v "$VERSION" '[.[0].versions[] | select(.version != $v)]' manifest.json)
           ALL_VERSIONS=$(jq -n --argjson new "$NEW_VER" --argjson existing "$EXISTING" '[$new] + $existing')
@@ -129,8 +129,6 @@ jobs:
             --body "Automated manifest update for release v${{ steps.meta.outputs.version }}."
           gh pr merge "$BRANCH" --squash --delete-branch 2>/dev/null || \
           gh pr merge "$BRANCH" --auto --squash --delete-branch
-
-      # Rollback steps — run in reverse dependency order so partial failures are fully cleaned up
 
       - name: Rollback - delete manifest branch
         if: failure() && steps.push_branch.outputs.pushed == 'true'
