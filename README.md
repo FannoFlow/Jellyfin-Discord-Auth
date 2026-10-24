@@ -8,7 +8,10 @@ Plugin repository manifest URL:
 
 ## Requirements
 
-- Jellyfin 10.11.x
+The plugin repository provides versioned builds for different Jellyfin compatibility lines. Jellyfin 12.x requires a .NET 10 plugin build; a plugin built for Jellyfin 10.11 (.NET 9) will not load on Jellyfin 12. The manifest retains the previous 10.11-compatible release for older servers.
+
+- Jellyfin 12.x (current build targets .NET 10 and the Jellyfin 12.0 plugin ABI; this includes Jellyfin 12.3)
+- Jellyfin 10.11.x servers remain on the last compatible 10.11 build in the plugin manifest
 - A Discord server you manage
 - A Discord application with a bot
 - A stable Jellyfin URL reachable by users (HTTPS strongly recommended)
