@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>JellyfinDiscordAuth</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -10,11 +10,15 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Discord.Net" Version="3.17.4" />
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.0" />
-    <PackageReference Include="Jellyfin.Model" Version="10.11.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Jellyfin.Controller" Version="12.0.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="12.0.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="6.0.1" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,6 +54,5 @@
   <Target Name="PostBuildDebug" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Debug' And $([MSBuild]::IsOSPlatform('Windows'))">
     <Exec Command="PowerShell.exe -ExecutionPolicy Bypass -Command &quot;&amp; '$(SolutionDir)\build-debug.ps1'&quot;" />
   </Target>
-
 
 </Project>
