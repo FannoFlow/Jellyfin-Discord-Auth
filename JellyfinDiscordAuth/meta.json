@@ -1,6 +1,6 @@
 {
   "category": "Authentication",
-  "changelog": "Patch release following v1.2.0.",
+  "changelog": "Fix missing Discord.Net.Dave runtime dependency in the release package.",
   "description": "This plugin allows users to sign in with Discord.",
   "guid": "359a7d2a-1c54-4e70-abbb-01bc73f098cf",
   "imageUrl": "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/main/img/logo.png",
@@ -8,6 +8,6 @@
   "overview": "Users can login with Discord",
   "owner": "FannoFlow",
   "targetAbi": "12.0.0.0",
-  "timestamp": "2026-10-24T19:13:43Z",
-  "version": "1.2.1"
+  "timestamp": "2026-10-24T20:10:00Z",
+  "version": "1.2.2"
 }

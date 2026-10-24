@@ -54,6 +54,7 @@ jobs:
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Core.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Rest.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.WebSocket.dll \
+            JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Dave.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Commands.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Interactions.dll \
             JellyfinDiscordAuth/bin/Release/net10.0/Discord.Net.Webhook.dll \
@@ -93,7 +94,7 @@ jobs:
             --arg sourceUrl "$SOURCE_URL" \
             '{changelog: $changelog, checksum: $checksum, sourceUrl: $sourceUrl, targetAbi: "12.0.0.0", timestamp: $timestamp, version: $version}')
 
-          EXISTING=$(jq --arg v "$VERSION" '[.[0].versions[] | select(.version != $v)]' manifest.json)
+          EXISTING=$(jq '.[0].versions' manifest.json)
           ALL_VERSIONS=$(jq -n --argjson new "$NEW_VER" --argjson existing "$EXISTING" '[$new] + $existing')
 
           jq --argjson versions "$ALL_VERSIONS" '.[0].versions = $versions' manifest.json > tmp.json && mv tmp.json manifest.json
