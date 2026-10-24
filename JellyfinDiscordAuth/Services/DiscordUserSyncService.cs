@@ -49,12 +49,17 @@ namespace JellyfinDiscordAuth.Services
         {
             try
             {
-                var savedDiscordUser = Configuration.DiscordUserData?.FirstOrDefault(x => x.Value.Id == discordUser.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)) ?? default;
+                var savedDiscordUser = Configuration.DiscordUserData?
+                    .FirstOrDefault(x => string.Equals(x.Value.Id, discordUser.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
 
                 var discordUserRoles = discordUser.Roles.Where(r => !r.IsEveryone);
-                User? user = savedDiscordUser.Key.ToString() == "00000000-0000-0000-0000-000000000000"
-                    ? _userManager.GetUserByName(discordUser.Username)
-                    : _userManager.GetUserById(savedDiscordUser.Key) ?? _userManager.GetUserByName(discordUser.Username);
+                if (savedDiscordUser == null)
+                {
+                    // Never infer account ownership from a mutable Discord username.
+                    return;
+                }
+
+                User? user = _userManager.GetUserById(savedDiscordUser.Value.Key);
 
                 if (user == null)
                 {
@@ -80,6 +85,11 @@ namespace JellyfinDiscordAuth.Services
                     }
                     else
                     {
+                        // No configured admin role means Discord roles cannot grant or preserve
+                        // administrator-level permissions.
+                        user.SetPermission(PermissionKind.IsAdministrator, false);
+                        user.SetPermission(PermissionKind.EnableContentDeletion, false);
+                        user.SetPermission(PermissionKind.EnableAllFolders, false);
                         user.SetPreference(PreferenceKind.EnabledFolders, GetLibraryAccess(discordUserRoles));
                     }
 
@@ -132,24 +142,9 @@ namespace JellyfinDiscordAuth.Services
                     }
                 }
 
-                try
-                {
-                var savedDiscordUser = Configuration.DiscordUserData?.FirstOrDefault(x => x.Value.Id == user.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)) ?? default;
-                    if (savedDiscordUser.Key.ToString() != "00000000-0000-0000-0000-000000000000")
-                    {
-                        User? jellyfinUser = _userManager.GetUserById(savedDiscordUser.Key);
-                        if (jellyfinUser != null)
-                        {
-                            _logger.LogInformation("{Username} ({UserId}) rejoined the server. Enabling Jellyfin user.", user.Username, user.Id);
-                            jellyfinUser.SetPermission(PermissionKind.IsDisabled, false);
-                            await _userManager.UpdateUserAsync(jellyfinUser).ConfigureAwait(false);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "An error occurred while enabling the Jellyfin user.");
-                }
+                // Recompute permissions from the member's current Discord roles before
+                // re-enabling the account. This also removes stale administrator permissions.
+                await ApplyDiscordRolesAsync(user).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
