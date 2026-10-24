@@ -176,7 +176,7 @@ namespace JellyfinDiscordAuth.Services
 
         private async Task OnUserLeft(SocketGuild guild, SocketUser user)
         {
-            await _syncService.HandleUserLeftAsync(user).ConfigureAwait(false);
+            await _syncService.HandleUserLeftAsync(guild, user).ConfigureAwait(false);
         }
 
         private async Task OnGuildMemberUpdated(Cacheable<SocketGuildUser, ulong> cacheable, SocketGuildUser user)

@@ -8,7 +8,7 @@
     <h1>Authenticating...</h1>
     <script>
         (function () {
-            var params = new URLSearchParams(window.location.search);
+            var params = new URLSearchParams(window.location.hash.substring(1));
             var code = params.get('code');
             if (!code) {
                 alert('Invalid or missing authentication code.');

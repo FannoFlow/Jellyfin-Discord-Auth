@@ -41,6 +41,14 @@ namespace JellyfinDiscordAuth.Services
             DiscordAuthPlugin.Instance?.Configuration
             ?? throw new InvalidOperationException("Plugin instance is not available.");
 
+        private bool IsConfiguredGuild(ulong guildId)
+        {
+            var serverId = Configuration.ServerId?.Trim();
+            return !string.IsNullOrWhiteSpace(serverId)
+                && ulong.TryParse(serverId, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var configuredGuildId)
+                && configuredGuildId == guildId;
+        }
+
         /// <summary>
         /// Applies Discord roles to a Jellyfin user, updating permissions and library access.
         /// </summary>
@@ -49,6 +57,12 @@ namespace JellyfinDiscordAuth.Services
         {
             try
             {
+                if (!IsConfiguredGuild(discordUser.Guild.Id))
+                {
+                    _logger.LogDebug("Ignoring role update from unconfigured Discord server {GuildId}.", discordUser.Guild.Id);
+                    return;
+                }
+
                 var savedDiscordUser = Configuration.DiscordUserData?
                     .FirstOrDefault(x => string.Equals(x.Value.Id, discordUser.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
 
@@ -112,7 +126,13 @@ namespace JellyfinDiscordAuth.Services
         {
             try
             {
-                _logger.LogInformation("{Username} ({UserId}) joined the server. Adding default roles.", user.Username, user.Id);
+                if (!IsConfiguredGuild(user.Guild.Id))
+                {
+                    _logger.LogDebug("Ignoring member join from unconfigured Discord server {GuildId}.", user.Guild.Id);
+                    return;
+                }
+
+                _logger.LogInformation("{Username} ({UserId}) joined the configured server. Adding default roles.", user.Username, user.Id);
 
                 var defaultRoleIds = Configuration.LibraryRoleMappings
                     .Where(m => m.UseDefaultAssign && !string.IsNullOrWhiteSpace(m.RoleId))
@@ -155,12 +175,19 @@ namespace JellyfinDiscordAuth.Services
         /// <summary>
         /// Handles a user leaving the Discord server.
         /// </summary>
+        /// <param name="guild">The Discord guild the user left.</param>
         /// <param name="user">The Discord user.</param>
-        public async Task HandleUserLeftAsync(SocketUser user)
+        public async Task HandleUserLeftAsync(SocketGuild guild, SocketUser user)
         {
             try
             {
-                _logger.LogInformation("{Username} ({UserId}) left the server. Disabling Jellyfin user.", user.Username, user.Id);
+                if (!IsConfiguredGuild(guild.Id))
+                {
+                    _logger.LogDebug("Ignoring member leave from unconfigured Discord server {GuildId}.", guild.Id);
+                    return;
+                }
+
+                _logger.LogInformation("{Username} ({UserId}) left the configured server. Disabling Jellyfin user.", user.Username, user.Id);
 
                 var savedDiscordUser = Configuration.DiscordUserData?.FirstOrDefault(x => x.Value.Id == user.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)) ?? default;
                 if (savedDiscordUser.Key.ToString() != "00000000-0000-0000-0000-000000000000")

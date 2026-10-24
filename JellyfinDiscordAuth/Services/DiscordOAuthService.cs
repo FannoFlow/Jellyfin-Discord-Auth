@@ -131,10 +131,15 @@ namespace JellyfinDiscordAuth.Services
             var request = httpContext.Request;
             var redirectUri = $"{GetBaseUrl(request)}/DiscordAuth/Callback";
 
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return (false, "Missing Discord authorization code. Please try logging in again.", true);
+            }
+
             using var httpClient = _httpClientFactory.CreateClient();
 
-            // Exchange code for an access token
-            var tokenResponse = await httpClient.PostAsync(
+            // Exchange code for an access token. Do not parse error bodies as successful token responses.
+            using var tokenResponse = await httpClient.PostAsync(
                 "https://discord.com/api/oauth2/token",
                 new FormUrlEncodedContent(new Dictionary<string, string>
                 {
@@ -144,6 +149,12 @@ namespace JellyfinDiscordAuth.Services
                     { "code", code },
                     { "redirect_uri", redirectUri }
                 })).ConfigureAwait(false);
+
+            if (!tokenResponse.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Discord OAuth token exchange failed with HTTP status {StatusCode}.", (int)tokenResponse.StatusCode);
+                return (false, "Failed to authenticate with Discord. Please try again.", true);
+            }
 
             var tokenJson = await tokenResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
             var tokenData = JsonConvert.DeserializeObject<Dictionary<string, object>>(tokenJson);
@@ -159,9 +170,24 @@ namespace JellyfinDiscordAuth.Services
 
             // Fetch user info from Discord
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            var userResponse = await httpClient.GetAsync("https://discord.com/api/users/@me").ConfigureAwait(false);
+            using var userResponse = await httpClient.GetAsync("https://discord.com/api/users/@me").ConfigureAwait(false);
+            if (!userResponse.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Discord user lookup failed with HTTP status {StatusCode}.", (int)userResponse.StatusCode);
+                return (false, "Failed to retrieve Discord user information.", true);
+            }
+
             var userJson = await userResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var userData = JsonConvert.DeserializeObject<DiscordUser>(userJson);
+            DiscordUser? userData;
+            try
+            {
+                userData = JsonConvert.DeserializeObject<DiscordUser>(userJson);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Discord returned an invalid user response.");
+                return (false, "Failed to retrieve Discord user information.", true);
+            }
             if (userData == null || string.IsNullOrEmpty(userData.Id))
             {
                 _logger.LogError("Failed to deserialize Discord user data.");
@@ -315,18 +341,37 @@ namespace JellyfinDiscordAuth.Services
             return _sessionService.RetrieveAndRemoveSession(code);
         }
 
+        private const int MaxAvatarBytes = 8 * 1024 * 1024;
+
         private async Task SaveDiscordAvatarAsync(HttpClient httpClient, User user, DiscordUser userData)
         {
+            if (string.IsNullOrWhiteSpace(userData.Avatar))
+            {
+                return;
+            }
+
             var avatarUrl = $"https://cdn.discordapp.com/avatars/{userData.Id}/{userData.Avatar}.png";
-            var avatarResponse = await httpClient.GetAsync(avatarUrl).ConfigureAwait(false);
+            using var avatarResponse = await httpClient.GetAsync(
+                avatarUrl,
+                HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+
+            if (!avatarResponse.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException("Discord avatar request failed with status " + (int)avatarResponse.StatusCode);
+            }
+
+            if (avatarResponse.Content.Headers.ContentLength is > MaxAvatarBytes)
+            {
+                throw new InvalidOperationException("Discord avatar exceeds the maximum allowed size.");
+            }
 
             if (!avatarResponse.Content.Headers.TryGetValues("content-type", out var contentTypeList))
             {
-                throw new InvalidOperationException("Cannot get Content-Type of image: " + avatarUrl);
+                throw new InvalidOperationException("Discord avatar response has no content type.");
             }
 
-            var contentType = contentTypeList.First();
-            var extension = contentType.ToLowerInvariant() switch
+            var contentType = contentTypeList.First().Split(';', 2)[0].Trim().ToLowerInvariant();
+            var extension = contentType switch
             {
                 "image/png" => ".png",
                 "image/jpeg" => ".jpg",
@@ -335,14 +380,30 @@ namespace JellyfinDiscordAuth.Services
                 _ => throw new InvalidOperationException("Unsupported Discord avatar content type.")
             };
 
-            if (!avatarResponse.IsSuccessStatusCode)
+            await using var responseStream = await avatarResponse.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            await using var boundedStream = new MemoryStream();
+            var buffer = new byte[81920];
+            var totalBytes = 0;
+            while (true)
             {
-                throw new InvalidOperationException("Discord avatar request failed with status " + (int)avatarResponse.StatusCode);
+                var bytesRead = await responseStream.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                totalBytes += bytesRead;
+                if (totalBytes > MaxAvatarBytes)
+                {
+                    throw new InvalidOperationException("Discord avatar exceeds the maximum allowed size.");
+                }
+
+                await boundedStream.WriteAsync(buffer.AsMemory(0, bytesRead)).ConfigureAwait(false);
             }
-            var stream = await avatarResponse.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            await using (stream)
-            {
-                // Use a server-generated stable ID rather than a Discord-controlled username.
+
+            boundedStream.Position = 0;
+
+            // Use a server-generated stable ID rather than a Discord-controlled username.
             var userDataRoot = Path.GetFullPath(_serverConfigurationManager.ApplicationPaths.UserConfigurationDirectoryPath);
             var userDataPath = Path.GetFullPath(Path.Combine(userDataRoot, user.Id.ToString("N")));
             var relativeUserPath = Path.GetRelativePath(userDataRoot, userDataPath);
@@ -352,17 +413,18 @@ namespace JellyfinDiscordAuth.Services
             {
                 throw new InvalidOperationException("Resolved avatar path is outside the user configuration directory.");
             }
-                if (user.ProfileImage is not null)
-                {
-                    await _userManager.ClearProfileImageAsync(user).ConfigureAwait(false);
-                }
 
-                Directory.CreateDirectory(userDataPath);
-                user.ProfileImage = new ImageInfo(Path.Combine(userDataPath, "profile" + extension));
-                await _providerManager.SaveImage(stream, contentType, user.ProfileImage.Path)
-                    .ConfigureAwait(false);
-                await _userManager.UpdateUserAsync(user).ConfigureAwait(false);
+            if (user.ProfileImage is not null)
+            {
+                await _userManager.ClearProfileImageAsync(user).ConfigureAwait(false);
             }
+
+            Directory.CreateDirectory(userDataPath);
+            user.ProfileImage = new ImageInfo(Path.Combine(userDataPath, "profile" + extension));
+            await _providerManager.SaveImage(boundedStream, contentType, user.ProfileImage.Path)
+                .ConfigureAwait(false);
+            await _userManager.UpdateUserAsync(user).ConfigureAwait(false);
         }
+
     }
 }
