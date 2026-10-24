@@ -11,7 +11,7 @@ updates:
         patterns:
           - "*"
     ignore:
-      # Review Jellyfin SDK upgrades manually to preserve server ABI compatibility.
+      # Jellyfin SDK package versions must be reviewed against the target server ABI.
       - dependency-name: "Jellyfin.Controller"
       - dependency-name: "Jellyfin.Model"
 
