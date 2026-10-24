@@ -7,6 +7,7 @@ on:
       - main
       - "security/**"
       - "ci/**"
+      - "compat/**"
 
 permissions:
   contents: read
@@ -17,7 +18,7 @@ concurrency:
 
 jobs:
   test-and-build:
-    name: Test and build (.NET 9)
+    name: Test and build (.NET 10 / Jellyfin 12)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,7 +28,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
           cache: true
           cache-dependency-path: |
             JellyfinDiscordAuth/JellyfinDiscordAuth.csproj
