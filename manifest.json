@@ -8,6 +8,14 @@
     "owner": "FannoFlow",
     "versions": [
       {
+        "changelog": "Patch release.",
+        "checksum": "271230D35EC580365FDD53DBA7E96F26",
+        "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.4.0/JellyfinDiscordAuth.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-11-04T22:30:20Z",
+        "version": "1.2.4.0"
+      },
+      {
         "changelog": "Security hardening for Discord authentication and release workflow.",
         "checksum": "66A0FAD50577693BC47EA92FD531DE8C",
         "sourceUrl": "https://github.com/FannoFlow/Jellyfin-Discord-Auth/releases/download/v1.2.3/JellyfinDiscordAuth.zip",
