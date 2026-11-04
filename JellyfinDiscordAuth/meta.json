@@ -1,6 +1,6 @@
 {
   "category": "Authentication",
-  "changelog": "Security hardening for Discord authentication and release workflow.",
+  "changelog": "Patch release.",
   "description": "This plugin allows users to sign in with Discord.",
   "guid": "359a7d2a-1c54-4e70-abbb-01bc73f098cf",
   "imageUrl": "https://raw.githubusercontent.com/9p4/jellyfin-plugin-sso/main/img/logo.png",
@@ -8,6 +8,6 @@
   "overview": "Users can login with Discord",
   "owner": "FannoFlow",
   "targetAbi": "12.0.0.0",
-  "timestamp": "2026-10-24T20:10:00Z",
-  "version": "1.2.3"
+  "timestamp": "2026-11-04T00:00:00Z",
+  "version": "1.2.4.0"
 }
