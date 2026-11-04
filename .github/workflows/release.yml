@@ -26,8 +26,8 @@ jobs:
         shell: bash
         run: |
           VERSION="$(jq -er '.version | strings' JellyfinDiscordAuth/meta.json)"
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Invalid release version format in meta.json"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid release version format in meta.json (expected major.minor.patch.revision)"
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
